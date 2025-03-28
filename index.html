@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Bluedot Data Faker</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: Helvetica, sans-serif;
+        color: rgb(10, 10, 10);
+      }
+      .container {
+        display: flex;
+        height: 100vh;
+      }
+      #sidebar {
+        background-color: rgb(230, 230, 230);
+        max-height: 100%;
+        margin: 0;
+        padding: 1rem;
+        flex: 1.5;
+        overflow-y: auto;
+      }
+      #map-container {
+        flex: 3;
+        position: relative;
+        overflow: hidden;
+      }
+      #map-container > div {
+        height: 100%;
+        width: 100%;
+      }
+      .settings {
+        margin-top: 1rem;
+      }
+      .settings pre {
+        padding: 0.5rem;
+        background: whitesmoke;
+      }
+      #floorSelector {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        z-index: 10;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div id="sidebar">
+        <h1>BlueDot Data Faker</h1>
+        <h3>Venue Settings</h3>
+        <div class="setting" style="display: none;">
+          <label for="mapId">Map Id</label>
+          <input id="mapId" type="text" value="660c0c6e7c0c4fe5b4cc484c" />
+        </div>
+        <div class="settings" style="display: none;">
+          <label for="key">Key</label>
+          <input id="key" type="text" placeholder="<demo ID>" />
+        </div>
+        <div class="settings" style="display: none;">
+          <label for="secret">Secret</label>
+          <input id="secret" type="text" placeholder="<demo secret>" />
+        </div>
+        <div class="settings">
+          <label for="environment">Environment</label>
+          <select name="environment" id="environment">
+            <option value="us">North America</option>
+            <option value="eu">Europe</option>
+          </select>
+        </div>
+        <div class="settings" style="display: none;">
+          <button id="loadMap">Load Map</button>
+        </div>
+        <h3>Data Generation Settings</h3>
+        <div class="settings">
+          <label for="jitter">Jitter (m)</label>
+          <input id="jitter" type="number" min="0" value="0" />
+        </div>
+        <div class="settings">
+          <label for="accuracy">Accuracy</label>
+          <input id="accuracy" type="number" min="1" value="5" />
+        </div>
+        <div class="settings">
+          <label for="updateDistance">Distance Between Updates (meters)</label>
+          <input id="updateDistance" type="number" min="1" value="5" />
+        </div>
+        <div class="settings">
+          <label for="startSpace">Start Space</label>
+          <select name="startSpace" id="startSpace"></select>
+        </div>
+        <div class="settings">
+          <label for="endSpace">End Space</label>
+          <select name="endSpace" id="endSpace"></select>
+        </div>
+        <h3>Playback Settings</h3>
+        <div class="settings">
+          <label for="speed">Time between updates (ms)</label>
+          <input id="speed" type="number" min="1" value="1000" />
+        </div>
+        <div class="settings">
+          <label for="showPath">Show path</label>
+          <input id="showPath" type="checkbox" checked="true" />
+        </div>
+        <div class="settings">
+          <label for="pathColor">Path Color</label>
+          <input id="pathColor" type="color" value="#4b90e2" />
+        </div>
+        <div class="settings">
+          <label for="pathRadius">Path Near Radius</label>
+          <input id="pathRadius" type="number" min="0" value="0.2" step="0.1" />
+        </div>
+        <div class="settings">
+          <label for="startLocationColor">Start Location Color</label>
+          <input id="startLocationColor" type="color" />
+        </div>
+        <div class="settings">
+          <label for="destinationLocationColor"
+            >Destination Location Color</label
+          >
+          <input id="destinationLocationColor" type="color" />
+        </div>
+        <h3>Controles</h3>
+        <div class="settings">
+          <button id="generate">Generar</button>
+          <button id="reset">Reiniciar</button>
+          <button id="download">Descargar</button>
+        </div>
+        <div class="settings">
+          BlueDot Actualizar posición:
+          <pre id="bluedotupdate">{}</pre>
+          BlueDot Estado:
+          <pre id="bluedotstatus">{}</pre>
+        </div>
+      </div>
+      <div id="map-container"></div>
+      <select id="floorSelector"></select>
+    </div>
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>
