@@ -22,7 +22,7 @@ import {
    * Add innacuracy and randomness to the position updates if jitter is enabled.
    */
   export const generateFakePositions = (
-    mapData: MapData,
+    _mapData: MapData,
     directions: Directions,
     options: PositionUpdatesOptions
   ): TBlueDotPositionUpdate[] => {
