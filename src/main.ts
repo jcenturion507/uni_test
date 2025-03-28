@@ -36,14 +36,14 @@ const fakePositionUpdater = new DynamicPositionUpdater();
  */
 
 // Venue settings
-const mapIdInput = document.getElementById("mapId")! as HTMLInputElement;
+/* const mapIdInput = document.getElementById("mapId")! as HTMLInputElement;
 const clientIdInput = document.getElementById("key")! as HTMLInputElement;
 const clientSecretInput = document.getElementById(
   "secret"
 )! as HTMLInputElement;
 const environmentSelect = document.getElementById(
   "environment"
-)! as HTMLSelectElement;
+)! as HTMLSelectElement; */
 
 const loadMapButton = document.getElementById("loadMap")! as HTMLButtonElement;
 
@@ -89,7 +89,7 @@ const getMapDataOptionsWithFallbacks = (): TGetMapDataOptions => {
     //key: clientIdInput.value === "" ? DEMO_KEY : clientIdInput.value,
     key: DEMO_KEY,
     secret: DEMO_SECRET,
-    environment: environmentSelect.value as "us" | "eu",
+    environment: "us",
   };
   return options;
 };
