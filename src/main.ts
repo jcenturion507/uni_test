@@ -7,6 +7,7 @@ import {
   Space,
   TGetMapDataOptions,
   TBlueDotPositionUpdate,
+  DOORS,
 } from "@mappedin/mappedin-js";
 import "@mappedin/mappedin-js/lib/index.css";
 import { generatePositionUpdates } from "./generator";
@@ -16,191 +17,183 @@ import { setSelectedFloor } from "./floorSelector";
 import { saveTemplateAsFile } from "./fileDownloader";
 import { DynamicPositionUpdater } from "./positionUpdater";
 
-// See Trial API key Terms and Conditions
-// https://developer.mappedin.com/docs/demo-keys-and-maps
 const DEMO_KEY = "mik_1YlSdV9drsYtVjmEo555607d4";
 const DEMO_SECRET = "mis_3yPjFAkOAKGx8m80DYFPTCfYwEwgFBBEoopIUIPWity7ce0100c";
 const DEMO_MAP_ID = "67dd806506b0a1000b97bae7";
 
 let mapData: MapData;
 let mapView: MapView;
-
+let currentInfoWindow: any = null;
 let blueDotEnabled = false;
-
 let positions: TBlueDotPositionUpdate[] | undefined;
+let idSpace;
 
 const fakePositionUpdater = new DynamicPositionUpdater();
 
-/**
- * Get UI elements
- */
+// Elementos del DOM
+const startSpaceSelector = document.getElementById("startSpace") as HTMLSelectElement;
+const endSpaceSelector = document.getElementById("endSpace") as HTMLSelectElement;
+const showPathCheckbox = document.getElementById("showPath") as HTMLInputElement;
+const generateButton = document.getElementById("generate") as HTMLButtonElement;
+const downloadButton = document.getElementById("download") as HTMLButtonElement;
+const resetButton = document.getElementById("reset") as HTMLButtonElement;
+const startLocationColor = document.getElementById("startLocationColor") as HTMLInputElement;
+const destinationLocationColor = document.getElementById("destinationLocationColor") as HTMLInputElement;
+const goToLocationButton = document.getElementById("goToLocation") as HTMLButtonElement;
 
-// Venue settings
-/* const mapIdInput = document.getElementById("mapId")! as HTMLInputElement;
-const clientIdInput = document.getElementById("key")! as HTMLInputElement;
-const clientSecretInput = document.getElementById(
-  "secret"
-)! as HTMLInputElement;
-const environmentSelect = document.getElementById(
-  "environment"
-)! as HTMLSelectElement; */
-
-const loadMapButton = document.getElementById("loadMap")! as HTMLButtonElement;
-
-// Data settings
-const startSpaceSelector = document.getElementById(
-  "startSpace"
-)! as HTMLSelectElement;
-
-const endSpaceSelector = document.getElementById(
-  "endSpace"
-)! as HTMLSelectElement;
-
-// Playback settings
-const showPathCheckbox = document.getElementById(
-  "showPath"
-)! as HTMLInputElement;
-
-// Controls
-const generateButton = document.getElementById(
-  "generate"
-)! as HTMLButtonElement;
-const downloadButton = document.getElementById(
-  "download"
-)! as HTMLButtonElement;
-const resetButton = document.getElementById("reset")! as HTMLButtonElement;
-
-const startLocationColor = document.getElementById(
-  "startLocationColor"
-) as HTMLInputElement;
-
-const destinationLocationColor = document.getElementById(
-  "destinationLocationColor"
-) as HTMLInputElement;
-/**
- * Configure button click handlers
- */
-
-// Get the currently configured venue options
 const getMapDataOptionsWithFallbacks = (): TGetMapDataOptions => {
-  const options: TGetMapDataOptions = {
+  return {
     mapId: DEMO_MAP_ID,
-    //mapID: mapIdInput.value
-    //key: clientIdInput.value === "" ? DEMO_KEY : clientIdInput.value,
     key: DEMO_KEY,
     secret: DEMO_SECRET,
     environment: "us",
   };
-  return options;
 };
 
 let previousColouredStart: Space | undefined;
 function onStartSpaceChange(event: any) {
   if (previousColouredStart) {
-    mapView.updateState(previousColouredStart, {
-      color: "initial",
-    });
+    mapView.updateState(previousColouredStart, { color: "initial" });
   }
 
-  const spaceToColor = mapData
-    .getByType("space")
-    .find((s) => s.id === event.target.value);
+  const spaceToColor = mapData.getByType("space").find((s) => s.id === event.target.value);
   if (spaceToColor) {
-    mapView.updateState(spaceToColor, {
-      color: startLocationColor.value,
-    });
+    mapView.updateState(spaceToColor, { color: startLocationColor.value });
     previousColouredStart = spaceToColor;
   }
 }
-startSpaceSelector.onchange = onStartSpaceChange;
 
 let previousColouredEnd: Space | undefined;
 function onEndSpaceChange(event: any) {
   if (previousColouredEnd) {
-    mapView.updateState(previousColouredEnd, {
-      color: "initial",
-    });
+    mapView.updateState(previousColouredEnd, { color: "initial" });
   }
 
-  const spaceToColor = mapData
-    .getByType("space")
-    .find((s) => s.id === event.target.value);
+  const spaceToColor = mapData.getByType("space").find((s) => s.id === event.target.value);
   if (spaceToColor) {
-    mapView.updateState(spaceToColor, {
-      color: destinationLocationColor.value,
-    });
+    mapView.updateState(spaceToColor, { color: destinationLocationColor.value });
     previousColouredEnd = spaceToColor;
   }
 }
-endSpaceSelector.onchange = onEndSpaceChange;
 
-// Save current fake position updates as JSON
-downloadButton.onclick = () => {
-  if (positions) {
-    saveTemplateAsFile("positions.json", positions);
-  } else {
-    alert("Generate a route first");
-  }
-};
-
-// Clear current fake data
-resetButton.onclick = () => {
-  if (mapView == null) {
-    console.error("MapView not loaded!");
-    return;
-  }
-  mapView.Navigation.clear();
-  positions = undefined;
-  fakePositionUpdater.reset();
-  mapView.BlueDot.disable();
-  blueDotEnabled = false;
-};
-
-/**
- * Helper functions
- */
-
-// Get a number from an input element
-const getNumericInputFromElementById = (
-  id: string,
-  fallback: number
-): number => {
-  return parseFloat(
-    (document.getElementById(id) as HTMLInputElement)?.value ||
-      fallback.toString()
-  );
-};
-
-/**
- * Initialize the map content
- */
 async function init(mapDataOptions: TGetMapDataOptions) {
   // Load data
   mapData = await getMapData(mapDataOptions);
 
   // Clear any existing map and load a new one
   const container = document.getElementById("map-container") as HTMLDivElement;
+  container.innerHTML = '';
   const mapEl = document.createElement("div");
-  (container as any)?.replaceChildren(mapEl);
+  mapEl.style.height = "100%";
+  mapEl.style.width = "100%";
+  container.appendChild(mapEl);
+
   mapView = await show3dMap(mapEl, mapData);
 
+  // Configuración inicial del mapa
   mapView.Labels.all();
-  // Set each space to be interactive.
+
   mapData.getByType("space").forEach((space) => {
     if (space.name) {
       mapView.updateState(space, {
         interactive: true,
+        hoverColor: 'lightgreen',
       });
     }
   });
 
-  // Enable blue dot with fake position updates
+  mapData.getByType("connection").forEach((connection) => {
+    const coords = connection.coordinates.find(
+      (coord) => coord.floorId === mapView.currentFloor.id
+    );
+    if (coords) {
+      mapView.Labels.add(coords, connection.name);
+    }
+  });
+
+  // Habilitar Blue Dot
   mapView.BlueDot.enable();
   blueDotEnabled = true;
 
-  // Generate fake geolocation updates
+  // Configurar eventos
+  startSpaceSelector.onchange = onStartSpaceChange;
+  endSpaceSelector.onchange = onEndSpaceChange;
+
+  downloadButton.onclick = () => {
+    if (positions) {
+      saveTemplateAsFile("positions.json", positions);
+    } else {
+      alert("Generate a route first");
+    }
+  };
+
+  resetButton.onclick = () => {
+    if (mapView == null) return;
+    mapView.Navigation.clear();
+    positions = undefined;
+    fakePositionUpdater.reset();
+    mapView.BlueDot.disable();
+    blueDotEnabled = false;
+  };
+
+  goToLocationButton.onclick = () => {
+    if (mapView == null) return;
+
+    if (!blueDotEnabled) {
+      mapView.BlueDot.enable();
+      blueDotEnabled = true;
+    }
+
+    const space = mapData.getById("space", idSpace.id);
+
+    if (space) {
+      mapView.Camera.animateTo({
+        center: mapView.createCoordinate(space.anchorTarget?.latitude || 0, space.anchorTarget?.longitude || 0),
+        zoomLevel: 21,
+        bearing: 0
+      }, { duration: 1000 });
+    }
+
+    const jitter = parseFloat((document.getElementById("jitter") as HTMLInputElement)?.value || "0");
+    const speed = parseFloat((document.getElementById("speed") as HTMLInputElement)?.value || "1000");
+    const accuracy = parseFloat((document.getElementById("accuracy") as HTMLInputElement)?.value || "5");
+    const updateDistance = parseFloat((document.getElementById("updateDistance") as HTMLInputElement)?.value || "5");
+
+    const start = mapData.getById("space", startSpaceSelector.value);
+    console.log("start:", start);
+    const end = mapData.getById("space", idSpace);
+    console.log("end:", idSpace);
+
+    if (start && end) {
+      const directions = mapData.getDirections(start, end);
+
+      if (directions) {
+        positions = generatePositionUpdates(mapData, directions, {
+          maxJitter: jitter,
+          accuracy,
+          updateDistance: updateDistance,
+        });
+
+        if (showPathCheckbox.checked === true) {
+          const pathColor = (document.getElementById("pathColor") as HTMLInputElement).value;
+          const pathRadius = Number((document.getElementById("pathRadius") as HTMLInputElement).value);
+          mapView.Navigation.draw(directions, {
+            pathOptions: {
+              color: pathColor,
+              nearRadius: pathRadius,
+            },
+          });
+        }
+      }
+
+      if (positions) {
+        fakePositionUpdater.start(positions, speed, onFakePositionReceived);
+      }
+    }
+  };
+
   generateButton.onclick = () => {
-    if (mapData == null) return;
+    if (!mapData) return;
 
     if (!blueDotEnabled) {
       mapView.BlueDot.enable();
@@ -213,18 +206,15 @@ async function init(mapDataOptions: TGetMapDataOptions) {
     }
 
     if (startSpaceSelector.value && endSpaceSelector.value) {
-      // Get configured options
-      const jitter = getNumericInputFromElementById("jitter", 0);
-      const speed = getNumericInputFromElementById("speed", 1000);
-      const accuracy = getNumericInputFromElementById("accuracy", 5);
-      const updateDistance = getNumericInputFromElementById(
-        "updateDistance",
-        5
-      );
+      const jitter = parseFloat((document.getElementById("jitter") as HTMLInputElement)?.value || "0");
+      const speed = parseFloat((document.getElementById("speed") as HTMLInputElement)?.value || "1000");
+      const accuracy = parseFloat((document.getElementById("accuracy") as HTMLInputElement)?.value || "5");
+      const updateDistance = parseFloat((document.getElementById("updateDistance") as HTMLInputElement)?.value || "5");
 
-      // Generate directions
       const start = mapData.getById("space", startSpaceSelector.value);
       const end = mapData.getById("space", endSpaceSelector.value);
+      console.log("start:", start);
+      console.log("end:", end);
 
       if (start && end) {
         const directions = mapData.getDirections(start, end);
@@ -237,12 +227,8 @@ async function init(mapDataOptions: TGetMapDataOptions) {
           });
 
           if (showPathCheckbox.checked === true) {
-            const pathColor = (
-              document.getElementById("pathColor") as HTMLInputElement
-            ).value;
-            const pathRadius = Number(
-              (document.getElementById("pathRadius") as HTMLInputElement).value
-            );
+            const pathColor = (document.getElementById("pathColor") as HTMLInputElement).value;
+            const pathRadius = Number((document.getElementById("pathRadius") as HTMLInputElement).value);
             mapView.Navigation.draw(directions, {
               pathOptions: {
                 color: pathColor,
@@ -259,9 +245,9 @@ async function init(mapDataOptions: TGetMapDataOptions) {
     }
   };
 
-  // Configure location selector dropdowns with venue data
+  // Configurar selectores
   populateFloorSelector(
-    document.getElementById("floorSelector")! as HTMLSelectElement,
+    document.getElementById("floorSelector") as HTMLSelectElement,
     mapData,
     mapView
   );
@@ -271,49 +257,107 @@ async function init(mapDataOptions: TGetMapDataOptions) {
     endSpaceSelector.value = startSpaceSelector.options[1].value;
   }
 
-  // Configure markers
-  let setSpaceMarker: Marker | undefined;
-
-  const deleteSpaceMarker = () => {
-    if (setSpaceMarker) {
-      mapView.Markers.remove(setSpaceMarker);
-      setSpaceMarker = undefined;
-    }
-  };
-  (window as any).deleteSpaceMarker = deleteSpaceMarker;
-
+  // Eventos del mapa
   mapView.on("click", async (event) => {
-    deleteSpaceMarker();
+    if (currentInfoWindow) {
+      currentInfoWindow.remove();
+      currentInfoWindow = null;
+    }
 
     if (event.spaces[0]) {
-      setSpaceMarker = mapView.Markers.add(
-        event.spaces[0],
-        `<div style="background: white; padding: 0.3rem;">
-        <span>${event.spaces[0].name}</span><br />`
-      );
+      const space = event.spaces[0];
+      console.log("Space object:", space);
+
+      // Obtener datos del espacio
+      const name_img = space.images?.[0]?.name || "";
+      const url_img = space.images?.[0]?.url || "";
+      const name_links = space.links?.[0]?.name || "Más información";
+      const url_links = space.links?.[0]?.url || "#";
+      const name = space.name || "Sin nombre";
+      const description = space.description || "Sin descripción disponible";
+      const type = space.type || "";
+      idSpace = space;
+      console.log("idSpace:", idSpace);
+
+      // Obtener elementos del modal
+      const modalTitle = document.getElementById('spaceModalLabel')!;
+      const spaceType = document.getElementById('spaceType')!;
+      const spaceDescription = document.getElementById('spaceDescription')!;
+      const spaceImage = document.getElementById('spaceImage') as HTMLImageElement;
+      const spaceLink = document.getElementById('spaceLink') as HTMLAnchorElement;
+
+      // Llenar el modal con los datos
+      modalTitle.textContent = name;
+      spaceType.textContent = type;
+      spaceDescription.textContent = description;
+
+      // Manejar la imagen (mostrar solo si existe)
+      if (url_img) {
+        spaceImage.src = url_img;
+        spaceImage.alt = name_img || name;
+        spaceImage.style.display = 'block';
+      } else {
+        spaceImage.style.display = 'none';
+      }
+
+      // Manejar el enlace (mostrar solo si es válido)
+      if (url_links && url_links !== "#") {
+        spaceLink.href = url_links;
+        spaceLink.textContent = name_links;
+        spaceLink.style.display = 'inline-block';
+      } else {
+        spaceLink.style.display = 'none';
+      }
+      // Mostrar el modal usando Bootstrap
+      const modalElement = document.getElementById('spaceModal')!;
+      const modal = new (window as any).bootstrap.Modal(modalElement);
+      modal.show();
+
+      try {
+        const coordinate = mapView.createCoordinate(
+          space.anchorTarget?.latitude || 0,
+          space.anchorTarget?.longitude || 0
+        );
+
+        mapView.Camera.animateTo({
+          center: coordinate,
+          zoomLevel: 21,
+          bearing: 0
+        }, { duration: 1000 });
+      } catch (error) {
+        console.error("Error:", error);
+      }
     }
   });
 
-  // Act on the floor-change event to update the level selector.
   mapView.on("floor-change", (event) => {
-    // update the level selector
     const id = event?.floor.id;
     if (!id) return;
     setSelectedFloor(id);
   });
 
+  // Configuración de puertas
+  mapView.updateState(DOORS.Interior, {
+    visible: true,
+    color: '#5C4033',
+    opacity: 0.6,
+  });
+
+  mapView.updateState(DOORS.Exterior, {
+    visible: true,
+    color: 'black',
+    opacity: 0.6,
+  });
+
   function onFakePositionReceived(position: TBlueDotPositionUpdate) {
     mapView.BlueDot.update(position);
+    console.log("BlueDot update:", position);
 
-    // Change the current map when Blue Dot moves to a different floor.
     if (mapView.currentFloor.id != position.floorOrFloorId) {
       mapView.setFloor(position.floorOrFloorId!);
     }
 
-    if (
-      typeof position.latitude === "number" &&
-      typeof position.longitude === "number"
-    ) {
+    if (typeof position.latitude === "number" && typeof position.longitude === "number") {
       const focusCoordinate = mapView.createCoordinate(
         position.latitude,
         position.longitude
@@ -324,24 +368,11 @@ async function init(mapDataOptions: TGetMapDataOptions) {
         { duration: 1000, easing: "ease-in-out" }
       );
     }
-    const blueDotPositionElement = document.getElementById(
-      "bluedotupdate"
-    )! as HTMLElement;
+
+    const blueDotPositionElement = document.getElementById("bluedotupdate") as HTMLElement;
     blueDotPositionElement.textContent = JSON.stringify(position, null, 2);
   }
 }
 
-// Load initial venue
+// Inicializar el mapa
 init(getMapDataOptionsWithFallbacks());
-
-// Load a new venue
-loadMapButton.onclick = () => {
-  init(getMapDataOptionsWithFallbacks());
-};
-
-/*
-const options = {
-	key: 'mik_1YlSdV9drsYtVjmEo555607d4',
-  secret: 'mis_3yPjFAkOAKGx8m80DYFPTCfYwEwgFBBEoopIUIPWity7ce0100c',
-  mapId: '67dd806506b0a1000b97bae7',
-}; */
